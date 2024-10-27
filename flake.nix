@@ -10,13 +10,35 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+        pythonEnv = pkgs.python3.withPackages (ps: with ps; [
+          pip
+          virtualenv
+        ]);
       in
       {
+        packages.default = pkgs.stdenv.mkDerivation {
+          name = "python-dev-environment";
+          buildInputs = [
+            pythonEnv
+            pkgs.stdenv.cc.cc
+            pkgs.zlib
+            pkgs.libGL
+            pkgs.libGLU
+            pkgs.xorg.libX11
+            pkgs.fish
+          ];
+          phases = [ "installPhase" ];
+          installPhase = ''
+            mkdir -p $out/bin
+            echo "#!${pkgs.bash}/bin/bash" >> $out/bin/python-dev-shell
+            echo "exec ${pkgs.fish}/bin/fish" >> $out/bin/python-dev-shell
+            chmod +x $out/bin/python-dev-shell
+          '';
+        };
+
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
-            python3
-            python3Packages.virtualenv
-            python3Packages.pip
+            pythonEnv
             stdenv.cc.cc
             zlib
             libGL
