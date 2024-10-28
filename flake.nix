@@ -12,7 +12,7 @@
         pkgs = nixpkgs.legacyPackages.${system};
         pythonEnv = pkgs.python3.withPackages (ps: with ps; [
           pip
-          virtualenv
+          virtualenvwrapper
         ]);
       in
       {
@@ -72,7 +72,7 @@
             end
 
             # Set environment variables
-            set -x LD_LIBRARY_PATH ${pkgs.stdenv.cc.cc.lib}/lib ${pkgs.zlib}/lib ${pkgs.libGL}/lib ${pkgs.libGLU}/lib \$LD_LIBRARY_PATH
+            # set -x LD_LIBRARY_PATH ${pkgs.stdenv.cc.cc.lib}/lib ${pkgs.zlib}/lib ${pkgs.libGL}/lib ${pkgs.libGLU}/lib \$LD_LIBRARY_PATH
 
             echo "Nix shell activated with Python venv for $PROJ_NAME. Use 'deactivate' to exit the venv."
             EOT
