@@ -1,71 +1,90 @@
 {
-  description = "Python development environment using buildFHSUserEnv";
+  description = "Python development environment";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs }:
-    let
-      system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
-      
-      pythonEnv = pkgs.python3.withPackages (ps: with ps; [
-        pip
-        virtualenv
-      ]);
-      
-      fhs = pkgs.buildFHSUserEnv {
-        name = "python-dev-fhs";
-        targetPkgs = pkgs: with pkgs; [
-          pythonEnv
-          stdenv.cc.cc
-          zlib
-          libGL
-          libGLU
-          xorg.libX11
-          fish
-        ];
-        runScript = ''
-          # Get the base name of the current directory
-          PROJ_NAME=$(basename $(pwd))
-          VENV_PATH="$HOME/.cache/nix-shell-venvs/$PROJ_NAME"
+  outputs = { self, nixpkgs, flake-utils }:
+    flake-utils.lib.eachDefaultSystem (system:
+      let
+        pkgs = nixpkgs.legacyPackages.${system};
+        pythonEnv = pkgs.python3.withPackages (ps: with ps; [
+          pip
+          virtualenv
+        ]);
+      in
+      {
+        packages.default = pkgs.stdenv.mkDerivation {
+          name = "python-dev-environment";
+          buildInputs = [
+            pythonEnv
+            pkgs.stdenv.cc.cc
+            pkgs.zlib
+            pkgs.libGL
+            pkgs.libGLU
+            pkgs.xorg.libX11
+            pkgs.fish
+          ];
+          phases = [ "installPhase" ];
+          installPhase = ''
+            mkdir -p $out/bin
+            echo "#!${pkgs.bash}/bin/bash" >> $out/bin/python-dev-shell
+            echo "exec ${pkgs.fish}/bin/fish" >> $out/bin/python-dev-shell
+            chmod +x $out/bin/python-dev-shell
+          '';
+        };
 
-          # Create and activate Python venv if it doesn't exist
-          if [ ! -d "$VENV_PATH" ]; then
-            echo "Creating Python virtual environment for $PROJ_NAME..."
-            ${pkgs.python3}/bin/python3 -m venv "$VENV_PATH"
-          fi
+        devShells.default = pkgs.mkShell {
+          buildInputs = with pkgs; [
+            pythonEnv
+            stdenv.cc.cc
+            zlib
+            libGL
+            libGLU
+            xorg.libX11
+            fish
+          ];
 
-          # Prepare Fish shell configuration
-          FISH_CONFIG=$(cat <<EOT
-          # Activate Python venv
-          source $VENV_PATH/bin/activate.fish
+          shellHook = ''
+            # Get the base name of the current directory
+            PROJ_NAME=$(basename $(pwd))
+            VENV_PATH="$HOME/.cache/nix-shell-venvs/$PROJ_NAME"
 
-          # Install dependencies from requirements.txt if it exists
-          if test -f "requirements.txt"
-            echo "Installing dependencies from requirements.txt..."
-            pip install -r requirements.txt
-          else
-            echo "No requirements.txt found. Skipping dependency installation."
-          end
+            # Create and activate Python venv if it doesn't exist
+            if [ ! -d "$VENV_PATH" ]; then
+              echo "Creating Python virtual environment for $PROJ_NAME..."
+              ${pkgs.python3}/bin/python3 -m venv "$VENV_PATH"
+            fi
 
-          # Set environment variables
-          set -x LD_LIBRARY_PATH ${pkgs.stdenv.cc.cc.lib}/lib ${pkgs.zlib}/lib ${pkgs.libGL}/lib ${pkgs.libGLU}/lib \$LD_LIBRARY_PATH
+            # Prepare Fish shell configuration
+            FISH_CONFIG=$(cat <<EOT
+            # Activate Python venv
+            source $VENV_PATH/bin/activate.fish
 
-          echo "FHS environment activated with Python venv for $PROJ_NAME. Use 'deactivate' to exit the venv."
-          EOT
-          )
+            # Install dependencies from requirements.txt if it exists
+            if test -f "requirements.txt"
+              echo "Installing dependencies from requirements.txt..."
+              pip install -r requirements.txt
+            else
+              echo "No requirements.txt found. Skipping dependency installation."
+            end
 
-          # Write Fish configuration to a temporary file
-          echo "$FISH_CONFIG" > /tmp/fhs-fish-config.fish
+            # Set environment variables
+            set -x LD_LIBRARY_PATH ${pkgs.stdenv.cc.cc.lib}/lib ${pkgs.zlib}/lib ${pkgs.libGL}/lib ${pkgs.libGLU}/lib \$LD_LIBRARY_PATH
 
-          # Start Fish shell with the prepared configuration
-          exec ${pkgs.fish}/bin/fish --init-command "source /tmp/fhs-fish-config.fish"
-        '';
-      };
-    in
-    {
-      devShells.${system}.default = fhs.env;
-    };
+            echo "Nix shell activated with Python venv for $PROJ_NAME. Use 'deactivate' to exit the venv."
+            EOT
+            )
+
+            # Write Fish configuration to a temporary file
+            echo "$FISH_CONFIG" > /tmp/nix-shell-fish-config.fish
+
+            # Start Fish shell with the prepared configuration
+            exec ${pkgs.fish}/bin/fish --init-command "source /tmp/nix-shell-fish-config.fish"
+          '';
+        };
+      }
+    );
 }
