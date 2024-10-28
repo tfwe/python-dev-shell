@@ -1,12 +1,13 @@
 {
-  description = "Python development environment";
+  description = "Python development environment using fhsuserenv";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    fhsuserenv.url = "github:flowher/fhsuserenv";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs = { self, nixpkgs, flake-utils, fhsuserenv }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
@@ -14,40 +15,24 @@
           pip
           virtualenv
         ]);
-      in
-      {
-        packages.default = pkgs.stdenv.mkDerivation {
-          name = "python-dev-environment";
-          buildInputs = [
-            pythonEnv
-            pkgs.stdenv.cc.cc
-            pkgs.zlib
-            pkgs.libGL
-            pkgs.libGLU
-            pkgs.xorg.libX11
-            pkgs.fish
-          ];
-          phases = [ "installPhase" ];
-          installPhase = ''
-            mkdir -p $out/bin
-            echo "#!${pkgs.bash}/bin/bash" >> $out/bin/python-dev-shell
-            echo "exec ${pkgs.fish}/bin/fish" >> $out/bin/python-dev-shell
-            chmod +x $out/bin/python-dev-shell
-          '';
-        };
+        
+        # Define the list of packages to include in the environment
+        packageList = with pkgs; [
+          pythonEnv
+          stdenv.cc.cc
+          zlib
+          libGL
+          libGLU
+          xorg.libX11
+          fish
+        ];
 
-        devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [
-            pythonEnv
-            stdenv.cc.cc
-            zlib
-            libGL
-            libGLU
-            xorg.libX11
-            fish
-          ];
-
-          shellHook = ''
+        # Create the fhsuserenv
+        fhsEnv = fhsuserenv.lib.mkFHSUserEnv {
+          inherit system;
+          name = "python-dev-fhs";
+          targetPkgs = pkgs: packageList;
+          runScript = ''
             # Get the base name of the current directory
             PROJ_NAME=$(basename $(pwd))
             VENV_PATH="$HOME/.cache/nix-shell-venvs/$PROJ_NAME"
@@ -74,15 +59,25 @@
             # Set environment variables
             set -x LD_LIBRARY_PATH ${pkgs.stdenv.cc.cc.lib}/lib ${pkgs.zlib}/lib ${pkgs.libGL}/lib ${pkgs.libGLU}/lib \$LD_LIBRARY_PATH
 
-            echo "Nix shell activated with Python venv for $PROJ_NAME. Use 'deactivate' to exit the venv."
+            echo "FHS environment activated with Python venv for $PROJ_NAME. Use 'deactivate' to exit the venv."
             EOT
             )
 
             # Write Fish configuration to a temporary file
-            echo "$FISH_CONFIG" > /tmp/nix-shell-fish-config.fish
+            echo "$FISH_CONFIG" > /tmp/fhs-fish-config.fish
 
             # Start Fish shell with the prepared configuration
-            exec ${pkgs.fish}/bin/fish --init-command "source /tmp/nix-shell-fish-config.fish"
+            exec ${pkgs.fish}/bin/fish --init-command "source /tmp/fhs-fish-config.fish"
+          '';
+        };
+      in
+      {
+        packages.default = fhsEnv;
+
+        devShells.default = pkgs.mkShell {
+          buildInputs = [ fhsEnv ];
+          shellHook = ''
+            exec ${fhsEnv}/bin/python-dev-fhs
           '';
         };
       }
