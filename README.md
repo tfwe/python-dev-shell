@@ -11,16 +11,9 @@ This project uses a Nix flake to set up a consistent Python development environm
 
 1. Ensure you have Nix installed with flakes enabled.
 
-2. Clone the repository containing this README and the Nix flake configuration:
+2. Create a `requirements.txt` file in the project root if you haven't already, listing your Python dependencies.
 
-   ```
-   git clone <repository-url>
-   cd <repository-name>
-   ```
-
-3. Create a `requirements.txt` file in the project root if you haven't already, listing your Python dependencies.
-
-4. To enter the development environment, run the following command in the same directory as your `requirements.txt` file:
+3a. To enter the development environment, run the following command in the same directory as your `requirements.txt` file:
 
    ```
    nix develop github:tfwe/python-dev-shell
@@ -32,6 +25,16 @@ This project uses a Nix flake to set up a consistent Python development environm
    - Install dependencies from `requirements.txt` (if it exists)
    - Set up necessary environment variables
 
+3b. Alternatively, clone the repository containing this README and the Nix flake configuration:
+
+   ```
+   git clone <repository-url>
+   cd <repository-name>
+   ```
+   Then execute the flake to activate the venv, making sure `requirements.txt` is in the same directory.
+   ```
+   nix develop .
+   ```
 ## Features
 
 - Python 3.11
