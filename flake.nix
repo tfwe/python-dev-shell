@@ -1,44 +1,22 @@
 {
-  description = "Python development environment";
+  description = "Development environment with Python and other tools";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.11";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        pkgs = nixpkgs.legacyPackages.${system};
-        pythonEnv = pkgs.python3.withPackages (ps: with ps; [
-          pip
-          virtualenvwrapper
-        ]);
+        pkgs = import nixpkgs { inherit system; };
       in
       {
-        packages.default = pkgs.stdenv.mkDerivation {
-          name = "python-dev-environment";
-          buildInputs = [
-            pythonEnv
-            pkgs.stdenv.cc.cc
-            pkgs.zlib
-            pkgs.libGL
-            pkgs.libGLU
-            pkgs.xorg.libX11
-            pkgs.fish
-          ];
-          phases = [ "installPhase" ];
-          installPhase = ''
-            mkdir -p $out/bin
-            echo "#!${pkgs.bash}/bin/bash" >> $out/bin/python-dev-shell
-            echo "exec ${pkgs.fish}/bin/fish" >> $out/bin/python-dev-shell
-            chmod +x $out/bin/python-dev-shell
-          '';
-        };
-
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
-            pythonEnv
+            python3
+            python3Packages.virtualenv
+            python3Packages.pip
             stdenv.cc.cc
             zlib
             libGL
@@ -72,17 +50,17 @@
             end
 
             # Set environment variables
-            # set -x LD_LIBRARY_PATH ${pkgs.stdenv.cc.cc.lib}/lib ${pkgs.zlib}/lib ${pkgs.libGL}/lib ${pkgs.libGLU}/lib \$LD_LIBRARY_PATH
+            set -x LD_LIBRARY_PATH ${pkgs.stdenv.cc.cc.lib}/lib ${pkgs.zlib}/lib ${pkgs.libGL}/lib ${pkgs.libGLU}/lib \$LD_LIBRARY_PATH
 
-            echo "Nix shell activated with Python venv for $PROJ_NAME. Use 'deactivate' to exit the venv."
+            echo "Nix flake dev shell activated with Python venv for $PROJ_NAME. Use 'deactivate' to exit the venv."
             EOT
             )
 
             # Write Fish configuration to a temporary file
-            echo "$FISH_CONFIG" > /tmp/nix-shell-fish-config.fish
+            echo "$FISH_CONFIG" > /tmp/nix-flake-fish-config.fish
 
             # Start Fish shell with the prepared configuration
-            exec ${pkgs.fish}/bin/fish --init-command "source /tmp/nix-shell-fish-config.fish"
+            exec ${pkgs.fish}/bin/fish --init-command "source /tmp/nix-flake-fish-config.fish"
           '';
         };
       }
