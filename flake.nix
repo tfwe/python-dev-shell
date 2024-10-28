@@ -14,9 +14,9 @@
       {
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
-            python3
-            python3Packages.virtualenv
-            python3Packages.pip
+            python311
+            python311Packages.virtualenv
+            python311Packages.pip
             stdenv.cc.cc
             zlib
             libGL
@@ -33,7 +33,7 @@
             # Create and activate Python venv if it doesn't exist
             if [ ! -d "$VENV_PATH" ]; then
               echo "Creating Python virtual environment for $PROJ_NAME..."
-              ${pkgs.python3}/bin/python3 -m venv "$VENV_PATH"
+              ${pkgs.python311}/bin/python3 -m venv "$VENV_PATH"
             fi
 
             # Prepare Fish shell configuration

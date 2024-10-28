@@ -21,7 +21,7 @@ pkgs.mkShell {
     # Create and activate Python venv if it doesn't exist
     if [ ! -d "$VENV_PATH" ]; then
       echo "Creating Python virtual environment for $PROJ_NAME..."
-      ${pkgs.python3}/bin/python3 -m venv "$VENV_PATH"
+      ${pkgs.python311}/bin/python3 -m venv "$VENV_PATH"
     fi
 
     # Prepare Fish shell configuration
